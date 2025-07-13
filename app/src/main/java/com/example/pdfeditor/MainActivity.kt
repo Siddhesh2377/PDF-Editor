@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.Scaffold
+import com.example.pdfeditor.compose.PDFReaderScreen
 import com.example.pdfeditor.compose.PdfEditorScreen
 import com.example.pdfeditor.ui.theme.PDFEditorTheme
 
@@ -15,7 +16,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             PDFEditorTheme {
                 Scaffold { innerPadding ->
-                    PdfEditorScreen(innerPadding)
+                    PDFReaderScreen(innerPadding)
                 }
             }
         }

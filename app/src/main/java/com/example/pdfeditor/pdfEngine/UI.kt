@@ -14,6 +14,7 @@
     import androidx.compose.foundation.layout.offset
     import androidx.compose.foundation.layout.padding
     import androidx.compose.foundation.layout.width
+    import androidx.compose.foundation.layout.widthIn
     import androidx.compose.foundation.text.selection.SelectionContainer
     import androidx.compose.material3.Text
     import androidx.compose.runtime.Composable
@@ -34,6 +35,7 @@
     import androidx.compose.ui.text.font.FontFamily
     import androidx.compose.ui.unit.dp
     import androidx.compose.ui.unit.sp
+    import kotlin.math.max
     import kotlin.math.min
 
     data class PDFText(
@@ -92,26 +94,37 @@
 
     @SuppressLint("UnusedBoxWithConstraintsScope")
     @Composable
-    fun PdfPageView(paras: List<Pair<String, Any>>, paddingValues: PaddingValues) {
+    fun PdfPageView(
+        paras: List<Pair<String, Any>>,
+        paddingValues: PaddingValues
+    ) {
         val pdfW = 595.28f  // A4 width in points
-        val pdfH = 841.89f  // A4 height in points
+        val pdfH = 841.89f
+
+        val density = LocalDensity.current
+        val zoomFactor = remember { mutableStateOf(1.0f) }
+
+        // Gesture detector for pinch zoom
+        val scaleState = rememberTransformableState { zoomChange, _, _ ->
+            val newZoom = (zoomFactor.value * zoomChange).coerceIn(0.5f, 5f)
+            zoomFactor.value = newZoom
+        }
 
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(Color.Black)  // for visibility
+                .background(Color.Black)
         ) {
-            val density = LocalDensity.current
             val boxWidthPx = with(density) { maxWidth.toPx() }
             val boxHeightPx = with(density) { maxHeight.toPx() }
 
-            // Scale to fit screen
-            val fitScale = min(boxWidthPx / pdfW, boxHeightPx / pdfH)
+            val fitScale = max(boxWidthPx / pdfW, boxHeightPx / pdfH)
 
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .transformable(state = scaleState) // gesture handler
                     .clipToBounds()
             ) {
                 SelectionContainer {
@@ -122,43 +135,39 @@
                             "BT" -> {
                                 val pdfText = para.second as PDFText
 
-                                if (pdfText.isNewLine) {
-                                    Log.d("PdfPageView", "🆕 Skipping empty line: ${pdfText.text}")
-                                    return@forEach
+                                if (pdfText.isNewLine) return@forEach
+
+                                val xDp = with(density) { (pdfText.x * fitScale * zoomFactor.value).toDp() }
+                                val yDp = with(density) { ((pdfH - pdfText.y) * fitScale * zoomFactor.value).toDp() }
+
+                                val scaledFontSp = (pdfText.fontPt * 1.933f * zoomFactor.value).sp
+
+                                // Fixed max width container (soft-wrap)
+                                Box(
+                                    modifier = Modifier
+                                        .offset(x = xDp, y = yDp)
+                                        .widthIn(max = with(density) { (pdfW * fitScale).toDp() }) // Fixed width
+                                ) {
+                                    Text(
+                                        text = pdfText.text,
+                                        color = Color.White,
+                                        fontSize = scaledFontSp,
+                                        softWrap = true,
+                                        lineHeight = scaledFontSp * 1.2
+                                    )
                                 }
-
-                                val xDp = with(density) { (pdfText.x * fitScale).toDp() }
-                                val yDp = with(density) { ((pdfH - pdfText.y) * fitScale).toDp() }
-
-                                val rawSp = pdfText.fontPt * 1.333f
-                                val finalFontSizeSp = rawSp.sp
-
-                                val spacedText = if (currentWordSpacing > 0f) {
-                                    pdfText.text.replace(" ", " ".repeat((currentWordSpacing * 2).toInt()))
-                                } else pdfText.text
-
-                                Log.d("PdfPageView", "📝 FONT ${finalFontSizeSp.value}sp | TXT - $spacedText")
-
-                                Text(
-                                    text = spacedText,
-                                    color = Color.White,
-                                    fontSize = finalFontSizeSp,
-                                    fontFamily = FontFamily.Monospace,
-                                    modifier = Modifier.offset(x = xDp, y = yDp)
-                                )
                             }
 
                             "WSP" -> {
                                 currentWordSpacing = para.second as Float
-                                Log.d("PdfPageView", "⚙️ Word Spacing Updated: $currentWordSpacing")
                             }
                         }
                     }
-
                 }
             }
         }
     }
+
 
 
 

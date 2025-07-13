@@ -40,6 +40,10 @@ android {
 }
 
 dependencies {
+    implementation("com.github.bhuvaneshw.pdfviewer:compose:1.1.1")
+    implementation("androidx.compose.material:material-icons-extended:1.7.8")
+    implementation("com.github.bhuvaneshw.pdfviewer:compose-ui:1.1.1")
+
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.livedata.ktx)
 
